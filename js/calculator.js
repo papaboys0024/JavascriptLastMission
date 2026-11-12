@@ -41,6 +41,21 @@ export const appendNumber = (num) => {
 
 
 
+    if (justCalculated) {
+        expression = "";
+        subDisplay.textContent = "";
+    }
+
+    const currentNumber = expression.split(/[+\-*/]/).pop();
+    if (num === ".") {
+        if (currentNumber.includes(".")) return;
+        expression += currentNumber === "" ? "0." : ".";
+    } else if (currentNumber === "0") {
+        expression = expression.slice(0, -1) + num;
+    } else {
+        expression += num;
+    }
+
     justCalculated = false;
     updateDisplay();
 };
@@ -71,6 +86,15 @@ export const appendOperator = (op) => {
     // 힌트: 마지막 문자 제거    → expression.slice(0, -1)
 
 
+
+    if (expression === "") return;
+
+    if (/[+\-*/]$/.test(expression)) {
+        expression = expression.slice(0, -1) + op;
+    } else {
+        expression += op;
+    }
+    subDisplay.textContent = "";
 
     justCalculated = false;
     updateDisplay();
@@ -115,9 +139,33 @@ export const calculate = () => {
     //
     // 규칙 4. 반환값: { expression: 수식, result: 결과값 문자열 }
     //         (main.js에서 기록 저장에 사용합니다)
+    if (expression === "" || /[+\-*/]$/.test(expression)) return null;
 
+    // 나누는 숫자 전체를 확인해 0.5 같은 정상 입력은 허용합니다.
+    const divisors = expression.matchAll(/\/((?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)/gi);
+    if ([...divisors].some(match => Number(match[1]) === 0)) {
+        subDisplay.textContent = "0으로 나눌 수 없습니다";
+        return null;
+    }
 
+    const originalExpression = expression;
+    try {
+        const value = Function('"use strict"; return (' + expression + ')')();
+        if (!Number.isFinite(value)) {
+            subDisplay.textContent = "계산 가능한 범위를 초과했습니다";
+            return null;
+        }
 
+        const result = parseFloat(value.toFixed(10)).toString();
+        expression = result;
+        justCalculated = true;
+        updateDisplay();
+        subDisplay.textContent = originalExpression + " =";
+        return { expression: originalExpression, result };
+    } catch {
+        subDisplay.textContent = "올바른 수식을 입력해주세요";
+        return null;
+    }
 };
 
 // ── 과제 4: 마지막 문자 삭제 ────────────────────────────────
@@ -135,6 +183,13 @@ export const deleteLast = () => {
 
 
 
+    if (justCalculated) {
+        clearAll();
+        return;
+    }
+
+    expression = expression.slice(0, -1);
+    subDisplay.textContent = "";
     updateDisplay();
 };
 
